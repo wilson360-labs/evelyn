@@ -251,10 +251,12 @@
     margin: 0 auto;
     padding: 90px 28px 120px;
     opacity: 0;
-    transform: translateY(24px) scale(.97);
-    transition: opacity 1.3s ease .3s, transform 1.3s cubic-bezier(.2,.8,.2,1) .3s;
+    transform: translateY(18px) scale(.96) rotateX(8deg);
+    transform-origin: 50% 20%;
+    perspective: 1200px;
+    transition: opacity 1.4s ease .2s, transform 1.4s cubic-bezier(.16,.8,.24,1) .2s;
   }
-  #letter.show{ opacity:1; transform: translateY(0) scale(1); }
+  #letter.show{ opacity:1; transform: translateY(0) scale(1) rotateX(0deg); }
 
   /* resplandor cálido detrás del papel */
   .paper-glow{
@@ -276,7 +278,7 @@
     color: var(--ink);
     border-radius: 6px;
     padding: clamp(32px, 6vw, 64px) clamp(24px, 7vw, 56px);
-    box-shadow: 0 40px 80px -30px rgba(0,0,0,.55);
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,.55), inset 0 0 60px rgba(139,94,60,.1);
     position: relative;
     z-index: 1;
     overflow: hidden;
@@ -287,6 +289,47 @@
     border: 1px solid rgba(212,163,115,.35);
     border-radius: 3px;
     pointer-events: none;
+  }
+
+  /* textura de fibras de papel + viñeta envejecida en los bordes */
+  .paper-texture{
+    position:absolute; inset:0;
+    z-index: -1;
+    pointer-events:none;
+    background:
+      repeating-linear-gradient(90deg, rgba(139,94,60,.035) 0px, transparent 1px, transparent 3px),
+      repeating-linear-gradient(0deg, rgba(139,94,60,.03) 0px, transparent 1px, transparent 4px),
+      radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(101,63,38,.16) 100%);
+  }
+
+  /* líneas de pliegue como si la carta hubiese sido doblada */
+  .fold-line{
+    position:absolute; left: 6%; right: 6%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(101,63,38,.22) 20%, rgba(101,63,38,.22) 80%, transparent);
+    pointer-events:none;
+    z-index: -1;
+    opacity: 0;
+    animation: revealLine 1s ease forwards;
+  }
+  .fold-line.f1{ top: 33%; animation-delay: .1s; }
+  .fold-line.f2{ top: 66%; animation-delay: .2s; }
+
+  /* pequeño sello de cera impreso en la propia carta */
+  .letter-seal{
+    position:absolute;
+    top: -6px; right: 26px;
+    width: 46px; height: 46px;
+    z-index: 2;
+    opacity: 0;
+    transform: rotate(-8deg) scale(.7);
+    animation: sealDrop .7s cubic-bezier(.3,1.4,.4,1) forwards;
+    animation-delay: 2.3s;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.3));
+  }
+  @keyframes sealDrop{
+    0%{ opacity:0; transform: rotate(-8deg) scale(.4) translateY(-14px); }
+    100%{ opacity:1; transform: rotate(-8deg) scale(1) translateY(0); }
   }
 
   /* ornamentos delicados en las esquinas del papel */
@@ -445,7 +488,7 @@
     .dust{ animation: none; }
     .envelope{ animation: none; }
     .envelope-flap, .seal, .letter-peek, .open-burst, #letter, #lock, .paper::after{ transition: none !important; animation: none !important; }
-    .salutation, .body-text p, .signoff{ opacity: 1; animation: none; }
+    .salutation, .body-text p, .signoff, .fold-line, .letter-seal{ opacity: 1; animation: none; transform:none; }
   }
 </style>
 </head>
@@ -485,6 +528,14 @@
 <main id="letter">
   <div class="paper-glow"></div>
   <article class="paper">
+    <div class="paper-texture"></div>
+    <span class="fold-line f1"></span>
+    <span class="fold-line f2"></span>
+    <svg class="letter-seal" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="#8c3b4a"/>
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#6b2836" stroke-width="2"/>
+      <text x="50" y="62" text-anchor="middle" font-family="Georgia, serif" font-size="38" fill="#e8c9a0">E</text>
+    </svg>
     <span class="corner tl"></span>
     <span class="corner tr"></span>
     <span class="corner bl"></span>
@@ -536,8 +587,8 @@
   // =========================================================================
 
   // Acceso temporal: si ya abrió antes en este dispositivo, no vuelve a pedir contraseña.
-  // Para desactivar esto, cambia REMEMBER_ACCESS a false.
-  const REMEMBER_ACCESS = true;
+  // Está DESACTIVADO (siempre pide contraseña). Para activarlo, cambia a true.
+  const REMEMBER_ACCESS = false;
   const STORAGE_KEY = 'carta_acceso_concedido';
 
   const envelope = document.getElementById('envelope');
@@ -589,9 +640,19 @@
   if (REMEMBER_ACCESS && localStorage.getItem(STORAGE_KEY) === 'true') {
     openLetter(true);
   } else {
-    // Autoenfoca la casilla para que el teclado se abra automáticamente en móviles.
-    window.addEventListener('DOMContentLoaded', () => input.focus());
-    setTimeout(() => input.focus(), 300);
+    // Intentos reforzados de autofoco para abrir el teclado sin que la persona
+    // tenga que tocar la casilla. NOTA: iOS Safari bloquea esto por seguridad
+    // del sistema operativo y exige un toque real; en Android suele funcionar.
+    const tryFocus = () => { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } };
+    tryFocus();
+    document.addEventListener('DOMContentLoaded', tryFocus);
+    window.addEventListener('load', tryFocus);
+    window.addEventListener('pageshow', tryFocus);
+    [50, 150, 300, 600, 1000].forEach(ms => setTimeout(tryFocus, ms));
+    // Primer toque/click en cualquier parte de la pantalla de bloqueo también enfoca,
+    // como respaldo para navegadores que sí exigen un gesto del usuario.
+    lock.addEventListener('touchstart', tryFocus, { once: true, passive: true });
+    lock.addEventListener('click', tryFocus, { once: true });
   }
 
   form.addEventListener('submit', (e) => {
