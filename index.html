@@ -10,7 +10,7 @@
 <style>
   /* ============================================================
      EDITA AQUÍ LO ESENCIAL:
-     - Contraseña: busca "const SECRET" en el <script> al final
+     - Contraseñas: busca "const PASSWORDS" en el <script> al final
      - Texto de la carta: busca "LETTER CONTENT" más abajo en el HTML
      - Música de piano: coloca un archivo llamado "piano.mp3" en la
        misma carpeta que este HTML (busca "AUDIO SOURCE" abajo)
@@ -155,15 +155,31 @@
     transform: translate(-50%,-50%) scale(.6) rotate(25deg);
   }
 
-  /* Sin título, sin subtítulo: pantalla neutra apta para QR público */
+  /* Sin título de destinatario: pantalla neutra apta para QR público */
+  .lock-label{
+    font-family:'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(18px, 3.6vw, 22px);
+    color: var(--parchment);
+    opacity: .9;
+    text-align: center;
+    margin: 0 0 22px;
+    letter-spacing: .01em;
+  }
+
   form#lockForm{
     display:flex; flex-direction:column; align-items:center; gap:16px;
     width: min(300px, 84vw);
   }
 
+  .password-wrap{
+    position: relative;
+    width: 100%;
+  }
+
   #password{
     width: 100%;
-    padding: 14px 18px;
+    padding: 14px 46px 14px 18px;
     text-align:center;
     background: rgba(250,243,230,.06);
     border: 1px solid rgba(212,163,115,.4);
@@ -173,10 +189,32 @@
     font-size: 14px;
     letter-spacing: .12em;
     outline: none;
-    transition: border-color .3s ease, background .3s ease;
+    transition: border-color .35s ease, background .35s ease, box-shadow .35s ease;
   }
   #password::placeholder{ color: rgba(250,243,230,.35); letter-spacing: .1em; }
-  #password:focus{ border-color: var(--amber); background: rgba(250,243,230,.1); }
+  #password:focus{
+    border-color: var(--amber);
+    background: rgba(250,243,230,.1);
+    box-shadow: 0 0 0 4px rgba(212,163,115,.12);
+  }
+
+  .toggle-eye{
+    position: absolute;
+    top: 50%; right: 6px;
+    transform: translateY(-50%);
+    width: 34px; height: 34px;
+    display:flex; align-items:center; justify-content:center;
+    background: transparent;
+    border: none;
+    color: var(--amber-soft);
+    cursor: pointer;
+    opacity: .75;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .toggle-eye:hover{ opacity: 1; }
+  .toggle-eye:active{ transform: translateY(-50%) scale(.9); }
+  .toggle-eye svg{ width: 18px; height: 18px; }
+  .toggle-eye .icon-off{ display:none; }
 
   button#openBtn{
     font-family:'Jost', sans-serif;
@@ -428,8 +466,16 @@
     </svg>
   </div>
 
+  <p class="lock-label">Escriba su contraseña</p>
+
   <form id="lockForm">
-    <input type="password" id="password" placeholder="contraseña" autocomplete="off" />
+    <div class="password-wrap">
+      <input type="password" id="password" placeholder="contraseña" autocomplete="off" inputmode="text" autofocus />
+      <button type="button" class="toggle-eye" id="toggleEye" aria-label="Mostrar u ocultar contraseña">
+        <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+      </button>
+    </div>
     <button type="submit" id="openBtn">Abrir</button>
     <p id="hint">&nbsp;</p>
   </form>
@@ -448,7 +494,7 @@
     <span class="sparkle"></span>
     <span class="sparkle"></span>
 
-    <!-- LETTER CONTENT: edita el saludo y el texto libremente -->
+    <!-- LETTER CONTENT: edita aquí el nombre (saludo) y el texto de la carta -->
     <h2 class="salutation">Evelyn✨,</h2>
 
     <div class="body-text">
@@ -476,13 +522,23 @@
   <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
 </button>
 
-<!-- AUDIO SOURCE: coloca tu archivo "piano.mp3" junto a este HTML -->
+<!-- AUDIO SOURCE: reemplaza el link/archivo aquí (puede ser "piano.mp3" local o una URL) -->
 <audio id="bgAudio" src="https://dl.dropbox.com/scl/fi/99y0peiefnipwk0jd2w4j/leberch-mellow-piano-355602.mp3?rlkey=a8wyjkc08fb8nt9jqydx53a84&st=u472bng5&dl=0" loop preload="none"></audio>
 
 <script>
-  // ======= CONTRASEÑA: cámbiala aquí =======
-  const SECRET = "evelyn";
-  // ==========================================
+  // ======= CONTRASEÑAS: agrega, quita o edita las que quieras aquí =======
+  // Cualquiera de estas abre la carta. No importan mayúsculas/minúsculas.
+  const PASSWORDS = [
+    "evelyn",
+    "55733658",
+    "emi"
+  ];
+  // =========================================================================
+
+  // Acceso temporal: si ya abrió antes en este dispositivo, no vuelve a pedir contraseña.
+  // Para desactivar esto, cambia REMEMBER_ACCESS a false.
+  const REMEMBER_ACCESS = true;
+  const STORAGE_KEY = 'carta_acceso_concedido';
 
   const envelope = document.getElementById('envelope');
   const lock = document.getElementById('lock');
@@ -494,31 +550,58 @@
   const audioToggle = document.getElementById('audioToggle');
   const iconPlay = document.getElementById('iconPlay');
   const iconPause = document.getElementById('iconPause');
+  const toggleEye = document.getElementById('toggleEye');
 
   let attempts = 0;
 
+  function isValidPassword(value){
+    const normalized = value.trim().toLowerCase();
+    return PASSWORDS.some(pw => pw.trim().toLowerCase() === normalized);
+  }
+
+  function openLetter(skipEnvelopeAnim){
+    hint.textContent = '';
+
+    const reveal = () => {
+      lock.classList.add('hidden');
+      letter.classList.add('show');
+      document.body.style.overflow = 'auto';
+
+      audio.volume = 0.55;
+      audio.play().then(() => {
+        audioToggle.classList.add('visible');
+        iconPlay.style.display = 'none';
+        iconPause.style.display = 'block';
+      }).catch(() => {
+        audioToggle.classList.add('visible');
+      });
+    };
+
+    if (skipEnvelopeAnim) {
+      reveal();
+    } else {
+      envelope.classList.add('open');
+      setTimeout(reveal, 1500);
+    }
+  }
+
+  // Si ya hubo acceso válido antes en este dispositivo, abre directo.
+  if (REMEMBER_ACCESS && localStorage.getItem(STORAGE_KEY) === 'true') {
+    openLetter(true);
+  } else {
+    // Autoenfoca la casilla para que el teclado se abra automáticamente en móviles.
+    window.addEventListener('DOMContentLoaded', () => input.focus());
+    setTimeout(() => input.focus(), 300);
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const value = input.value.trim().toLowerCase();
 
-    if (value === SECRET.toLowerCase()) {
-      envelope.classList.add('open');
-      hint.textContent = '';
-
-      setTimeout(() => {
-        lock.classList.add('hidden');
-        letter.classList.add('show');
-        document.body.style.overflow = 'auto';
-
-        audio.volume = 0.55;
-        audio.play().then(() => {
-          audioToggle.classList.add('visible');
-          iconPlay.style.display = 'none';
-          iconPause.style.display = 'block';
-        }).catch(() => {
-          audioToggle.classList.add('visible');
-        });
-      }, 1500);
+    if (isValidPassword(input.value)) {
+      if (REMEMBER_ACCESS) {
+        try { localStorage.setItem(STORAGE_KEY, 'true'); } catch (err) {}
+      }
+      openLetter(false);
     } else {
       attempts++;
       hint.textContent = 'Contraseña incorrecta';
@@ -529,6 +612,15 @@
         { duration: 300 }
       );
     }
+  });
+
+  // Mostrar / ocultar contraseña
+  toggleEye.addEventListener('click', () => {
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    toggleEye.querySelector('.icon-on').style.display = isHidden ? 'none' : 'block';
+    toggleEye.querySelector('.icon-off').style.display = isHidden ? 'block' : 'none';
+    input.focus();
   });
 
   audioToggle.addEventListener('click', () => {
